@@ -1,14 +1,18 @@
 import asyncio
+import os
 import signal
 import sys
 import logging
 import discord
 from discord.ext import commands
-from services.CharacterService import load_characters_from_file, update_characters, list_character_levels, \
+from services.CharacterService import load_characters_from_file, \
     save_characters_to_file
 
 # === SETTINGS ===
-
+TOKEN = os.getenv("TORTOISE_BOT_TOKEN")
+GUILD_ID = 1391355994059182160
+CHANNEL_ID = 1395098029404717076
+ADMIN_ROLE = "Manager Ruchu"
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,6 +22,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # === LOGGING ===
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+logger.handlers.clear()
 
 formatter = logging.Formatter(
     '[%(asctime)s] %(levelname)s: %(message)s',
@@ -37,6 +42,7 @@ async def main():
     async with bot:
         await bot.load_extension("admin_commands.admin")
         await bot.load_extension("user_commands.user")
+        await bot.load_extension("services.Scheduler")
         await bot.start(TOKEN)
 
 
@@ -45,8 +51,7 @@ async def main():
 async def on_ready():
     logging.info(f"Logged in as {bot.user}")
     load_characters_from_file()
-    await update_characters()
-    await list_character_levels()
+    logging.info(f"Bot is ready!")
 
 
 # === Graceful Shutdown (on Ctrl+C or kill) ===

@@ -1,39 +1,17 @@
-import datetime
 import json
 import logging
 import os
 
-from discord.ext import tasks, commands
+from discord import Member
 from playwright.async_api import async_playwright, ViewportSize
 
 from STATES import AddResult, RemoveResult
+from model.Character import Character
+from services.player import select_player_by_id, update_player_nick
 
 TURTLE_WOW_ARMORY_URL = "https://turtle-wow.org/armory/Nordanaar/"
 CHARACTERS_FILE = "characters.json"
 CHARACTERS = []
-
-
-class Character:
-    def __init__(self, character_name, player_id, level):
-        self.character_name = character_name
-        self.player_id = player_id
-        self.level = level
-
-    def to_dict(self):
-        return {
-            "character_name": self.character_name,
-            "player_id": self.player_id,
-            "level": self.level
-        }
-
-    @staticmethod
-    def from_dict(data):
-        return Character(
-            character_name=data["character_name"],
-            player_id=data["player_id"],
-            level=data["level"]
-        )
-
 
 # === Load character list from file ===
 def load_characters_from_file():
@@ -60,6 +38,7 @@ def load_characters_from_file():
             CHARACTERS = []
             logging.warning(f"{CHARACTERS_FILE} is invalid JSON or empty. Initialized empty character list.")
 
+
 # === Save character list to file ===
 def save_characters_to_file():
     logging.info("Start save_characters")
@@ -67,20 +46,31 @@ def save_characters_to_file():
         json.dump([character.to_dict() for character in CHARACTERS], file, indent=2)
     logging.info("Characters saved to file.")
 
+
+# === Get character from CHARACTERS by Member.id
+async def get_character_by_member(member: Member):
+    for character in CHARACTERS:
+        if character.player_id == member.id:
+            return character
+    return None
+
+
 # === Add character to CHARACTERS ===
-async def add_character_to_list(character_name: str, player_id: str):
-    if player_id is None:
+async def add_character_to_list(character_name: str, player: Member):
+    if player.id is None:
         return AddResult.NO_SUCH_PLAYER
     if any(character.character_name.lower() == character_name.lower() for character in CHARACTERS):
         return AddResult.EXISTS
 
-    new_character = Character(character_name, player_id, level="Unknown")
-    new_character.level = await get_character_level(character_name)
-    if not isinstance(new_character.level, (int, float)):
+    new_character = Character(character_name, player.id, level="Unknown")
+    new_level = await get_character_level(character_name)
+    if not is_number(new_level):
         return AddResult.NO_SUCH_CHARACTER
+    new_character.level = new_level
 
     CHARACTERS.append(new_character)
     return AddResult.ADDED
+
 
 # === Remove character to CHARACTERS ===
 async def remove_character_from_list(character_name: str):
@@ -89,6 +79,7 @@ async def remove_character_from_list(character_name: str):
             CHARACTERS.remove(c)
             return RemoveResult.REMOVED
     return RemoveResult.NOT_EXISTS
+
 
 # === CHARACTER SCRAPING FUNCTION ===
 async def get_character_level(name):
@@ -118,6 +109,7 @@ async def get_character_level(name):
         logging.error(f"Error checking {name}: {str(e)}")
         return f"Error checking {name}: {str(e)}"
 
+
 # === PRINT LIST OF THE CHARACTERS ===
 async def list_character_levels():
     logging.info("Start list_character_levels")
@@ -126,9 +118,22 @@ async def list_character_levels():
         string_buffer += f"{character.character_name} is level {character.level}.\n"
     return string_buffer
 
-# === BACKGROUND TASK === Machine is in UTC+0 that's why we are setting hour to 22
-@tasks.loop(time=datetime.time(hour=22, minute=0, second=0))
-async def update_characters():
+
+async def update_characters(members: list[Member] = None):
     logging.info("Start task update_characters")
     for character in CHARACTERS:
-        character.level = await get_character_level(character.character_name)
+        new_level = await get_character_level(character.character_name)
+        if is_number(new_level):
+            character.level = new_level
+    if members is not None:
+        for character in CHARACTERS:
+            member = await select_player_by_id(members, character.player_id)
+            await update_player_nick(member, character)
+
+
+def is_number(v):
+    try:
+        float(v)
+        return True
+    except (ValueError, TypeError):
+        return False
