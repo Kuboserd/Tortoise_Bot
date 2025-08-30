@@ -56,7 +56,6 @@ async def on_ready():
 
 # === Graceful Shutdown (on Ctrl+C or kill) ===
 def handle_exit(*args):
-    save_characters_to_file()
     logging.info("Shutting down.")
     sys.exit(0)
 

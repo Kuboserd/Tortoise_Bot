@@ -69,6 +69,7 @@ async def add_character_to_list(character_name: str, player: Member):
     new_character.level = new_level
 
     CHARACTERS.append(new_character)
+    save_characters_to_file()
     return AddResult.ADDED
 
 
