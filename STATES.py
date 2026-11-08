@@ -5,6 +5,7 @@ class AddResult(Enum):
     EXISTS = "exists"
     NO_SUCH_PLAYER = "noSuchPlayer"
     NO_SUCH_CHARACTER = "noSuchCharacter"
+    API_ERROR = "apiError"
     ADDED = "added"
 
 class RemoveResult(Enum):

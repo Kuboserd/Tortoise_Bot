@@ -5,8 +5,8 @@ import sys
 import logging
 import discord
 from discord.ext import commands
-from services.CharacterService import load_characters_from_file, \
-    save_characters_to_file
+from services.CharacterService import load_characters_from_file
+from services.blizzard_api import missing_credentials
 
 # === SETTINGS ===
 TOKEN = os.getenv("TORTOISE_BOT_TOKEN")
@@ -51,6 +51,9 @@ async def main():
 async def on_ready():
     logging.info(f"Logged in as {bot.user}")
     load_characters_from_file()
+    missing = missing_credentials()
+    if missing:
+        logging.warning(f"Blizzard API is not configured: {', '.join(missing)}")
     logging.info(f"Bot is ready!")
 
 

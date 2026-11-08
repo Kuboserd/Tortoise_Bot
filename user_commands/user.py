@@ -1,7 +1,8 @@
 import logging
 
 from discord.ext import commands
-from services.CharacterService import TURTLE_WOW_ARMORY_URL, list_character_levels
+from services.CharacterService import list_character_levels
+from services.blizzard_api import armory_url
 
 
 class User(commands.Cog):
@@ -17,13 +18,12 @@ class User(commands.Cog):
 
         await ctx.send(result)
 
-    @commands.command(help="Sends link to armory page of specified character_name.")
-    async def link(self, ctx, character_name: str):
+    @commands.command(help="Sends the Forever armory link. Usage: !link <name> <surname>")
+    async def link(self, ctx, name: str, surname: str):
+        character_name = f"{name} {surname}"
         logging.info(f"Handle !link character:{character_name} executed by: {ctx.author.display_name}")
 
-        url = f"{TURTLE_WOW_ARMORY_URL}{character_name}"
-
-        await ctx.author.send(url)
+        await ctx.author.send(armory_url(character_name))
 
 
 async def setup(bot):
